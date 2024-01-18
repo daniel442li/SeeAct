@@ -1,3 +1,18 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2024 OSU Natural Language Processing Group
+#
+# Licensed under the OpenRAIL-S License;
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.licenses.ai/ai-pubs-open-rails-vz1
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 import os
 import jsonlines
@@ -15,7 +30,6 @@ from src.data_utils.image_utils import convert_elements2detections
 from src.data_utils.image_utils import extract_topk_elements, extract_elements_by_ids
 from src.data_utils.image_utils import batch_elements_by_locality, batch_elements_by_locality_16_16_17
 from src.data_utils.format_prompt_utils import data_format_input_multichoice
-
 
 def run(args):
 
@@ -37,19 +51,6 @@ def run(args):
     with open(query_source_path, 'r') as f:
         all_queries = json.load(f)
 
-    # setup annotators
-    bounding_box_annotator = sv.BoundingBoxAnnotator(
-        thickness=2
-    )
-    candidate_label_annotator = sv.LabelAnnotator(
-        color_lookup=sv.ColorLookup.INDEX,
-        text_position=sv.Position.BOTTOM_LEFT,
-        text_scale=0.5,
-        text_color=sv.Color.white(),
-        color=sv.Color.black(),
-        text_thickness=1
-    )
-
     # Enumerate each task in query data and generate screenshots
     for i, task in tqdm(enumerate(all_queries)):
         if len(task) == 2:
@@ -65,6 +66,7 @@ def run(args):
             with open(single_screenshot_path) as f:
                 scrshots_task = json.load(f)
         else:
+            print("No Folder: ", single_screenshot_path)
             continue
 
         # Output Path
@@ -104,6 +106,7 @@ def run(args):
         else:
             choice_batches = batch_elements_by_locality(top_50_elements, num_choices=args.num_choice)
 
+
         to_run = []
         for batch_idx, candidate_elements in enumerate(choice_batches):
             temp = copy.deepcopy(sample)
@@ -128,22 +131,16 @@ def run(args):
 
             # Prepare Images
             candidate_detections = convert_elements2detections(candidate_elements)
-            candidate_labels = [chr(i + 65) for i in range(len(candidate_detections))]
+            candidate_labels = [chr(i+65) for i in range(len(candidate_detections))]
 
             annotated_image = bef_img.copy()
-            # Generate manual selection images
-            annotated_image = bounding_box_annotator.annotate(
-                scene=annotated_image, detections=candidate_detections
-            )
-            annotated_image = candidate_label_annotator.annotate(
-                scene=annotated_image, detections=candidate_detections, labels=candidate_labels)
             # Cropping
             annotated_image = sv.crop_image(image=annotated_image, xyxy=np.array(
                 [
                     0,
-                    max(0, min(candidate_detections.xyxy[:, 1]) - 1024),
+                    max(0, min(candidate_detections.xyxy[:, 1])-1024),
                     annotated_image.shape[1],
-                    min(annotated_image.shape[0], max(candidate_detections.xyxy[:, 3]) + 1024)
+                    min(annotated_image.shape[0], max(candidate_detections.xyxy[:, 3])+1024)
                 ]
             ))
             bef_fn = os.path.join(image_dir, "{}.jpg".format(batch_idx))
@@ -163,12 +160,12 @@ if __name__ == '__main__':
     parser.add_argument('--split', type=str, default="test_website")
     parser.add_argument('--selected_set_task_id_path', type=str, default="../data/formal_manual_selection/task_id_dicts/30_selected.pkl")
     parser.add_argument('--screenshot_dump_path', type=str, default="../data/screenshot_source/")
-    parser.add_argument('--output_dir', type=str, default="../data/30_selected_tasks/exp2_whole")
+    parser.add_argument('--output_dir', type=str, default="../data/30_selected_tasks/exp4_whole")
     parser.add_argument('--query_source_path', type=str,
                         default="../data/source_data/20_chocies/test_website_outputs_top50.json")
-
     my_args = parser.parse_args()
     run(my_args)
+
 
 
 

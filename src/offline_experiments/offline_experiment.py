@@ -1,15 +1,35 @@
-﻿from data_utils.prompts import generate_prompt
-import json, jsonlines
+﻿# -*- coding: utf-8 -*-
+# Copyright (c) 2024 OSU Natural Language Processing Group
+#
+# Licensed under the OpenRAIL-S License;
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.licenses.ai/ai-pubs-open-rails-vz1
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from src.data_utils.prompts import generate_prompt
+import json
+import jsonlines
 import os
-from utils.gpt4v_api import OpenaiEngine
+from src.demo_utils.inference_engine import OpenaiEngine
+
 
 generation_model = OpenaiEngine(
     rate_limit=-1,
     api_key="Your API Key",
 )
 
-exp_split = "4api"
-source_data_path = "../data/examples/exp4"
+exp_split = "text_choice"
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+source_data_path = "../../data/examples/textual_choice"
+source_data_path=os.path.join(base_dir,source_data_path)
 
 for action_file in os.listdir(source_data_path):
     if action_file.startswith('.') or not os.path.isdir(os.path.join(source_data_path, action_file)):
@@ -32,7 +52,7 @@ for action_file in os.listdir(source_data_path):
         image_path = query['image_path'] + "/" + str(query_id) + ".jpg"
         image_path = image_path.replace('../', '')
         image_path = image_path.replace('./', '')
-        image_path = source_data_path + "/" + image_path
+        image_path = os.path.join(source_data_path,image_path)
         choices_input = None
         try:
             choices_input = query['choices']

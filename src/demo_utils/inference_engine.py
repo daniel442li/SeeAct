@@ -1,3 +1,17 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2024 OSU Natural Language Processing Group
+#
+# Licensed under the OpenRAIL-S License;
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.licenses.ai/ai-pubs-open-rails-vz1
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import os
 import time
 
@@ -12,7 +26,6 @@ from openai.error import (
 )
 
 import base64
-import requests
 
 
 def encode_image(image_path):
@@ -26,11 +39,6 @@ class Engine:
 
     def tokenize(self, input):
         return self.tokenizer(input)
-
-
-
-
-
 
 
 class OpenaiEngine(Engine):
@@ -79,7 +87,7 @@ class OpenaiEngine(Engine):
         backoff.expo,
         (APIError, RateLimitError, APIConnectionError, ServiceUnavailableError, InvalidRequestError),
     )
-    def generate(self, prompt: list = None, max_new_tokens=50, temperature=0, model=None, image_path=None,
+    def generate(self, prompt: list = None, max_new_tokens=4096, temperature=None, model=None, image_path=None,
                  ouput__0=None, turn_number=0, **kwargs):
         self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
         start_time = time.time()
@@ -105,10 +113,10 @@ class OpenaiEngine(Engine):
                                                                  }]},
             ]
             response1 = openai.ChatCompletion.create(
-                model="gpt-4-vision-preview",
+                model=model if model else self.model,
                 messages=prompt1_input,
-                max_tokens=4096,
-                temperature=0,
+                max_tokens=max_new_tokens if max_new_tokens else 4096,
+                temperature=temperature if temperature else self.temperature,
                 **kwargs,
             )
             answer1 = [choice["message"]["content"] for choice in response1["choices"]][0]
@@ -125,15 +133,13 @@ class OpenaiEngine(Engine):
                 {"role": "assistant", "content": [{"type": "text", "text": f"\n\n{ouput__0}"}]},
                 {"role": "user", "content": [{"type": "text", "text": prompt2}]}, ]
             response2 = openai.ChatCompletion.create(
-                model="gpt-4-vision-preview",
+                model=model if model else self.model,
                 messages=prompt2_input,
-                max_tokens=4096,
-                temperature=0,
+                max_tokens=max_new_tokens if max_new_tokens else 4096,
+                temperature=temperature if temperature else self.temperature,
                 **kwargs,
             )
             return [choice["message"]["content"] for choice in response2["choices"]][0]
-
-
 
 
 class OpenaiEngine_MindAct(Engine):
@@ -205,5 +211,3 @@ class OpenaiEngine_MindAct(Engine):
                     + self.request_interval
             )
         return [choice["message"]["content"] for choice in response["choices"]]
-
-

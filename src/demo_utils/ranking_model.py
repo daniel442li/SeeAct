@@ -1,6 +1,17 @@
-# From sentence_transformers/cross_encoder/CrossEncoder.py
-# https://github.com/UKPLab/sentence-transformers
-# Add grad accumulation
+# -*- coding: utf-8 -*-
+# Copyright (c) 2024 OSU Natural Language Processing Group
+#
+# Licensed under the OpenRAIL-S License;
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.licenses.ai/ai-pubs-open-rails-vz1
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import logging
 import os
 from typing import Callable, Dict, Type
@@ -12,8 +23,35 @@ from torch import nn
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm, trange
+import numpy as np
 
 logger = logging.getLogger(__name__)
+def find_topk(a, k, axis=-1, largest=True, sorted=True):
+    if axis is None:
+        axis_size = a.size
+    else:
+        axis_size = a.shape[axis]
+    assert 1 <= k <= axis_size
+
+    a = np.asanyarray(a)
+    if largest:
+        index_array = np.argpartition(a, axis_size - k, axis=axis)
+        topk_indices = np.take(index_array, -np.arange(k) - 1, axis=axis)
+    else:
+        index_array = np.argpartition(a, k - 1, axis=axis)
+        topk_indices = np.take(index_array, np.arange(k), axis=axis)
+    topk_values = np.take_along_axis(a, topk_indices, axis=axis)
+    if sorted:
+        sorted_indices_in_topk = np.argsort(topk_values, axis=axis)
+        if largest:
+            sorted_indices_in_topk = np.flip(sorted_indices_in_topk, axis=axis)
+        sorted_topk_values = np.take_along_axis(
+            topk_values, sorted_indices_in_topk, axis=axis)
+        sorted_topk_indices = np.take_along_axis(
+            topk_indices, sorted_indices_in_topk, axis=axis)
+        return sorted_topk_values, sorted_topk_indices
+    return topk_values, topk_indices
+
 
 
 class CrossEncoder(CrossEncoder):
